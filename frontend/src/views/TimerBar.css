@@ -1,0 +1,52 @@
+.timer-container {
+    padding: 10px;
+    width: 100%;
+}
+
+.background {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(4px);
+    position: relative;
+}
+
+.timer {
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        rgba(0, 226, 88, 0.9),
+        rgba(0, 179, 71, 0.8)
+    );
+    border-radius: inherit;
+    transform-origin: left;
+    will-change: transform, width, opacity;
+    box-shadow: 
+        0 0 10px rgba(0, 226, 88, 0.3),
+        0 0 20px rgba(0, 226, 88, 0.2);
+    position: relative;
+}
+
+.timer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.1),
+        rgba(255, 255, 255, 0.2)
+    );
+    border-radius: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .timer {
+        transition: none;
+    }
+}

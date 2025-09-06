@@ -1,0 +1,1748 @@
+import React, { useRef, useState, useEffect } from "react";
+import { BsFileLock2Fill } from "react-icons/bs";
+import { AiOutlineClose } from "react-icons/ai";
+import { GoArrowSwitch } from "react-icons/go";
+import { makeStyles, withStyles,} from "@material-ui/core";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, ButtonGroup, FormControl, Select, MenuItem } from "@material-ui/core";
+import TextField from "@material-ui/core/TextField";
+import InputAdornment from "@material-ui/core/InputAdornment";
+import Box from "@material-ui/core/Box";
+import { connect } from "react-redux";
+import PropTypes from "prop-types";
+import { CandleStickSocket } from "../services/websocket.service";
+import { useToasts } from "react-toast-notifications";
+import { useSpring, animated, config } from 'react-spring';
+import { ClipLoader } from "react-spinners";
+import ReactApexChart from 'react-apexcharts';
+import axios from 'axios';
+import { createChart, LineStyle, CrosshairMode,PriceScaleMode} from 'lightweight-charts'; // LightweightCharts'ı içe aktar
+import { w3cwebsocket as W3CWebSocket } from 'websocket';
+import Preloader from "../Preloader"; // Import the Preloader component
+import Slider from "@material-ui/core/Slider";
+import Tabs from "@material-ui/core/Tabs";
+import Tab from "@material-ui/core/Tab";
+import useWebSocket from 'react-use-websocket';
+import prices from '../components/Prices.json';
+import { updateCurrency, updateFiat, DisplayFiat } from "../actions/auth";
+import Menu from "@material-ui/core/Menu";
+import SearchIcon from "@material-ui/icons/Search";
+import { useParams } from 'react-router-dom';
+import { withRouter } from 'react-router-dom';
+
+const WS_URL = 'wss://fstream.binance.com/ws/btcusdt@trade';
+
+// Coin logoları için sabit URL'ler
+const COIN_LOGOS = {
+  BTC: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
+  ETH: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png',
+  DOGE: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png',
+  LTC: 'https://assets.coingecko.com/coins/images/2/small/litecoin.png',
+  SOL: 'https://assets.coingecko.com/coins/images/4128/small/solana.png',
+  XRP: 'https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png',
+  ADA: 'https://assets.coingecko.com/coins/images/975/small/cardano.png',
+  AVAX: 'https://assets.coingecko.com/coins/images/12559/small/Avalanche_Circle_RedWhite_Trans.png',
+};
+
+const CustomTableCell = withStyles((theme) => ({
+  root: {
+    borderBottom: 'none',
+    borderRadius: 'none',
+    boxShadow: 'none',
+    border: 'none',
+
+  },
+  paper: {
+    borderBottom: 'none',
+    borderRadius: 'none',
+    boxShadow: 'none',
+    border: 'none',
+
+  },
+
+  head: {
+    backgroundColor: "#101123",
+    fontFamily: "Poppins",
+    fontWeight: 100,
+    letterSpacing: ".1em",
+
+    color: theme.palette.common.white,
+  },
+  body: {
+    marginRight: "50px",
+    borderRadius: 'none',
+    boxShadow: 'none',
+    fontFamily: "Rubik",
+    fontSize: "14px",
+    fontWeight: 200,
+
+    backgroundColor: "#101123",
+    color: theme.palette.common.white,
+
+    fontSize: 16,
+  },
+}))(TableCell);
+
+const CustomTabs = withStyles({
+  root: {
+    color: "#ffffff", // Set text color to white
+  },
+  indicator: {
+    backgroundColor: "#3b82f6", // Set indicator color to blue
+  },
+})(Tabs);
+
+const CustomTab = withStyles((theme) => ({
+  root: {
+    color: "#ffffff", // Set text color to white
+    "&:hover": {
+      color: "#ffffff", // Set hover text color to white
+    },
+  },
+}))(Tab);
+
+const ResultInput = withStyles({
+  root: {
+    marginRight: 10,
+    maxWidth: 180,
+    minWidth: 0,
+    marginBottom: 10, // Add top margin
+    
+    "& :before": {
+      display: "none",
+    },
+    "& label": {
+      color: "#323956",
+      fontSize: 15,
+    },
+    "& input": {
+      color: "#e4e4e4",
+      fontFamily: "Rubik",
+      fontSize: "14px",
+      fontWeight: 500,
+      letterSpacing: ".1em",
+      padding: "8px 8px", // Adjust padding as needed
+    },
+    "& div": {
+      // background: "#171A28",
+      // background: "#131426",
+      // height: "2.25rem",
+      borderRadius: 4,
+    },
+    
+  },
+})(TextField);
+
+
+
+const BetInput = withStyles({
+  root: {
+    marginRight: 10,
+    maxWidth: 130,
+    minWidth: 100,
+    marginBottom: 10, // Add top margin
+
+    "& :before": {
+      display: "none",
+    },
+    "& label": {
+      color: "#323956",
+      fontSize: 15,
+    },
+    "& div input": {
+      color: "#e4e4e4",
+      fontFamily: "Rubik",
+      fontSize: "14px",
+      fontWeight: 500,
+      letterSpacing: ".1em",
+      padding: "0.5rem 0.25rem",
+    },
+    "& div": {
+      // background: "#171A28",
+      background: "#131426",
+      height: "2.25rem",
+      borderRadius: 4,
+    },
+    
+  },
+})(TextField);
+
+const useStyles = makeStyles(theme => ({
+  root: {
+    marginTop: "3%",
+    [theme.breakpoints.down("lg")]: {
+      marginTop: "5%",
+
+    },
+  },
+
+  tableContainer: {
+    backgroundColor: '#131426',
+    boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)',
+    borderRadius: '12px',
+    overflowX: 'auto',
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    tableLayout: 'fixed', // Set table layout to fixed
+  },
+  tableHead: {
+    backgroundColor: '#131426',
+  },
+  tableCell: {
+    padding: '12px',
+    textAlign: 'center',
+    fontFamily: "Rubik",
+    fontWeight: 200,
+    letterSpacing: ".005em",
+
+    color: '#fff', // White text color
+    width: 'calc(100% / 7)', // Set a fixed width for each cell
+    maxWidth: '200px', // Set maximum width to prevent cells from expanding too much
+    overflow: 'hidden', // Hide overflow content if any
+    textOverflow: 'ellipsis', // Add ellipsis for long text
+    whiteSpace: 'nowrap', // Prevent text wrapping
+  },
+  imageIcon: {
+    width: '16px',
+    height: '16px',
+    marginBottom: '3px',
+    marginRight: theme.spacing(1), // Adjust spacing as needed
+    verticalAlign: 'middle', // Align the image vertically with the text
+  },
+
+  cashoutButton: {
+    backgroundColor: 'rgb(32, 112, 223)',
+    color: '#fff',
+    padding: '6px 8px',
+    border: 'none',
+    borderRadius: '8px',
+    fontFamily: "Rubik",
+    fontSize: "12px",
+    fontWeight: 400,
+
+    cursor: 'pointer',
+    '&:hover': {
+      backgroundColor: 'rgb(32, 112, 223)',
+    },
+  },
+
+
+
+  title: {
+    color: "#e4e4e4",
+    fontFamily: "Rubik",
+    fontSize: "12px",
+    fontWeight: 500,
+    letterSpacing: ".1em",
+    padding: "0.25rem 0.25rem 0",
+    lineHeight: 1,
+  },
+
+  placeBet: {
+    background: "#131426",
+    borderRadius: 5,
+    boxShadow: "0 3px 1px -2px rgba(0,0,0,.2), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12)",
+    marginTop: "0.6rem",
+    "& button": {
+      color: "#e4e4e4",
+      fontFamily: "Rubik",
+      fontSize: "12px",
+      fontWeight: 500,
+      letterSpacing: ".1em",
+      "&:hover": {
+        opacity: 1,
+      },
+    },
+  },
+
+  betCont: {
+    display: "flex",
+    width: "95%",
+    alignItems: "center",
+    flexWrap: "wrap",
+    margin: "auto",
+    padding: "0.5rem 0 0",
+  },
+  container: {
+    marginLeft: "auto",
+    marginRight: "auto",
+    marginTop: "auto",
+    marginBottom: "auto",
+
+    backgroundColor: "#0a0b1c", 
+    borderRadius: "8px",
+        padding: "5px 5px 5px 5px",
+
+    // padding: "5px 15px 15px 15px",
+    display: "flex",
+    width: "1150px",
+    maxWidth: "1180px",
+    flexDirection: "column",
+    [theme.breakpoints.down("lg")]: {
+      width: "78%",
+      maxWidth: "1050px",
+    },
+    [theme.breakpoints.down("sm")]: {
+      width: "auto",
+    },
+  },
+
+
+  betSection: {
+    width: "100%",
+    height: "40rem",
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    [theme.breakpoints.down("lg")]: {
+      flexDirection: "column-reverse",
+    },
+  },
+  inputIcon: {
+    marginTop: "0 !important",
+    color: "#4fa0d8",
+    background: "transparent !important",
+  },
+  betContainer: {
+    borderRadius: "4px",
+    padding: "16px",
+    width: "20.625rem",
+    height: "34.5rem",
+    backgroundColor: "#0a0b1c",
+    [theme.breakpoints.down("lg")]: {
+      marginTop: "24px",
+      width: "100%",
+      height: "auto",
+    },
+  },
+  inputContainer: {
+    position: "relative",
+    marginBottom: "24px",
+  },
+  betInput: {
+    "& .MuiFilledInput-root": {
+      backgroundColor: "#131426",
+      borderRadius: "4px",
+      "&:hover": {
+        backgroundColor: "#171933",
+      },
+    },
+    "& .MuiFilledInput-input": {
+      color: "#e4e4e4",
+      fontFamily: "Rubik",
+      fontSize: "14px",
+      fontWeight: 500,
+      padding: "8px 12px",
+    },
+  },
+  multiplierContainer: {
+    position: "absolute",
+    top: "10px",
+    right: "10px",
+    display: "flex",
+    gap: "8px",
+  },
+  multiplier: {
+    minWidth: "fit-content",
+    backgroundColor: "#101123",
+    borderColor: "#32363c",
+    color: "white",
+  },
+  orderContainer: {
+    marginTop: "10px",
+    backgroundColor: "#0a0b1c",
+    borderRadius: "6px",
+    padding: "12px",
+    height: "250px",
+    [theme.breakpoints.down("lg")]: {
+      width: "90%",
+      height: "200px",
+    },
+  },
+  
+  table: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+
+    width: "100%",
+    borderCollapse: "collapse", // Optional: collapse table borders
+  },
+  
+
+  multiplierButton: {
+    backgroundColor: "transparent",
+    color: "#cccccc",
+    border: "1px solid transparent",
+    outline: "none",
+    cursor: "pointer",
+    padding: "4px",
+    fontSize: "14px",
+    fontFamily: "'Roboto', sans-serif",
+    fontWeight: 500,
+    "&:hover": {
+      backgroundColor: "#101123",
+    },
+  },
+  insufficientFundsButton: {
+    backgroundColor: "#3b82f6",
+    color: "#ffffff",
+    width: "100%",
+    height: "40px",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    border: "2px solid #4c8bf5",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontFamily: "'Roboto', sans-serif",
+    fontWeight: 500,
+    "&:hover": {
+      backgroundColor: "#2563eb",
+      borderColor: "#1e429f",
+    },
+  },
+  limboButtonDisabled: {
+    opacity: 0.5, // Reduce opacity when disabled
+    pointerEvents: "none", // Disable pointer events when disabled
+  },
+  limboButton: {
+    textTransform: "none",
+    width: "100%",
+    height: "40px",
+    padding: "0 30px",
+    borderRadius: "4px",
+    fontSize: "15px",
+    fontWeight: 500,
+    color:" #fff",
+    background: "rgb(32, 112, 223)",
+    border: "none",
+    color: "#ffffff",
+    transition: "opacity .3s ease",
+    fontFamily: "Rubik",
+    "&:hover": {
+      background: "rgb(32, 112, 223)",
+      borderColor: "#1e429f",
+    },
+  },
+  preloader: {
+    background: "#101123",
+
+    height: "100%",
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "column",
+  },
+
+  sliderAndValueContainer: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  multiplierValue: {
+    marginLeft: theme.spacing(1), // Adjust spacing as needed
+    color: '#fff', // Adjust color as needed
+  },
+
+  limboSection: {
+    backgroundColor: "#0a0b1c",
+    borderLeft: "0.120rem solid #1b1c2a",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    width: "55rem",
+    [theme.breakpoints.down("lg")]: {
+      width: "100%",
+      maxWidth: "80rem",
+      marginLeft: "auto",
+      marginRight: "auto",
+    },
+  },
+
+  positionButtons: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '16px',
+    "& .longButton": {
+      flex: 1,
+      backgroundColor: "#131426",
+      color: "#e4e4e4",
+      "&.active": {
+        backgroundColor: "#0ecb81", // Yeşil renk - Long için
+        "&:hover": {
+          backgroundColor: "#0bb974",
+        },
+      },
+    },
+    "& .shortButton": {
+      flex: 1,
+      backgroundColor: "#131426",
+      color: "#e4e4e4",
+      "&.active": {
+        backgroundColor: "#f6465d", // Kırmızı renk - Short için
+        "&:hover": {
+          backgroundColor: "#e03d53",
+        },
+      },
+    },
+  },
+
+  placeBetButton: {
+    width: "100%",
+    height: "40px",
+    fontSize: "15px",
+    fontWeight: 500,
+    fontFamily: "Rubik",
+    "&.longButton": {
+      backgroundColor: "#0ecb81", // Yeşil - Long için
+      color: "#ffffff",
+      "&:hover": {
+        backgroundColor: "#0bb974",
+      },
+      "&:disabled": {
+        backgroundColor: "#0ecb8180",
+      }
+    },
+    "&.shortButton": {
+      backgroundColor: "#f6465d", // Kırmızı - Short için
+      color: "#ffffff",
+      "&:hover": {
+        backgroundColor: "#e03d53",
+      },
+      "&:disabled": {
+        backgroundColor: "#f6465d80",
+      }
+    },
+  },
+
+  tabsContainer: {
+    marginBottom: "20px",
+    padding: "4px",
+    backgroundColor: "#131426",
+    borderRadius: "8px",
+    "& .MuiTabs-flexContainer": {
+      gap: "8px",
+      padding: "4px",
+    },
+  },
+  customTab: {
+    minWidth: "50%",
+    minHeight: "40px",
+    color: "#e4e4e4",
+    fontFamily: "Rubik",
+    fontSize: "14px",
+    fontWeight: 500,
+    textTransform: "none",
+    borderRadius: "6px",
+    transition: "all 0.3s ease",
+    opacity: 0.7,
+    
+    "&.Mui-selected": {
+      color: "#fff",
+      opacity: 1,
+      backgroundColor: "#1E2136",
+    },
+    
+    "&:hover": {
+      opacity: 0.9,
+      backgroundColor: "#1E2136",
+    },
+  },
+
+  headerContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '10px 15px',
+    backgroundColor: '#0a0b1c',
+    borderBottom: '1px solid #1b1c2a',
+  },
+
+  coinSelector: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    cursor: 'pointer',
+    padding: '6px 12px',
+    borderRadius: '4px',
+    '&:hover': {
+      backgroundColor: '#1E2136',
+    },
+  },
+
+  coinInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+
+  coinLogo: {
+    width: '24px',
+    height: '24px',
+    objectFit: 'contain', // Logo oranını korur
+    borderRadius: '50%', // Yuvarlak logo
+  },
+
+  coinName: {
+    display: 'flex',
+    flexDirection: 'column',
+    '& .symbol': {
+      color: '#fff',
+      fontSize: '14px',
+      fontWeight: '500',
+    },
+    '& .name': {
+      color: '#848E9C',
+      fontSize: '12px',
+    },
+  },
+
+  priceInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    marginLeft: '20px',
+    gap: '10px',
+    '& .price': {
+      color: '#fff',
+      fontSize: '20px',
+      fontWeight: '500',
+    },
+    '& .change': {
+      fontSize: '14px',
+    },
+    '& .volume': {
+      color: '#848E9C',
+      fontSize: '14px',
+    },
+  },
+
+  changePositive: {
+    color: '#0ecb81',
+  },
+
+  changeNegative: {
+    color: '#f6465d',
+  },
+
+  dropdownMenu: {
+    backgroundColor: '#131426',
+    border: '1px solid rgba(255, 255, 255, 0.05)',
+    borderRadius: '12px',
+    marginTop: '8px',
+    padding: '8px',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+    minWidth: '300px',
+  },
+
+  menuItem: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '12px 16px',
+    borderRadius: '8px',
+    margin: '2px 0',
+    transition: 'all 0.2s ease',
+    
+    '&:hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    },
+
+    '& .coin-info': {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      flex: 1,
+    },
+
+    '& .price-info': {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-end',
+      gap: '4px',
+    },
+
+    '& img': {
+      width: '32px',
+      height: '32px',
+      objectFit: 'contain',
+      borderRadius: '50%',
+    },
+
+    '& .symbol': {
+      color: '#fff',
+      fontSize: '14px',
+      fontWeight: '500',
+    },
+
+    '& .name': {
+      color: '#848E9C',
+      fontSize: '12px',
+    },
+
+    '& .price': {
+      color: '#fff',
+      fontSize: '14px',
+      fontWeight: '500',
+    },
+
+    '& .change-positive': {
+      color: '#0ecb81',
+      fontSize: '12px',
+    },
+
+    '& .change-negative': {
+      color: '#f6465d',
+      fontSize: '12px',
+    },
+
+    '&.selected': {
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      borderLeft: '3px solid #3b82f6',
+    }
+  },
+
+  searchBox: {
+    margin: '0 8px 12px 8px',
+    padding: '8px 12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    
+    '& input': {
+      background: 'none',
+      border: 'none',
+      color: '#fff',
+      fontSize: '14px',
+      width: '100%',
+      outline: 'none',
+      
+      '&::placeholder': {
+        color: '#848E9C',
+      }
+    }
+  },
+}));
+
+const Futures = (props) => {
+  const { symbol } = useParams();
+
+  const { user, isAuthenticated, selectedCurrency, selectedLogo, selectedFiatCurrency, DisplayFiat, updateCurrency, updateFiat, DisplayForFiat } = props;
+  
+  const logoUrl = DisplayForFiat
+    ? `https://shuffle.com/icons/fiat/${selectedFiatCurrency}.svg`
+    : selectedLogo;
+
+  const formatBalance = (amount, selectedCurrency) => {
+    if (DisplayForFiat) {
+      if (selectedCurrency in prices && selectedFiatCurrency in prices[selectedCurrency]) {
+        const conversionRate = prices[selectedCurrency][selectedFiatCurrency];
+        if (conversionRate <= 0) {
+          throw new Error('Invalid conversion rate');
+        }
+        const fiatAmount = amount * conversionRate;
+        return new Intl.NumberFormat('en-US', { 
+          style: 'currency', 
+          currency: selectedFiatCurrency 
+        }).format(fiatAmount);
+      } else {
+        throw new Error('Currency not supported');
+      }
+    } else {
+      return new Intl.NumberFormat('en-US', { 
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 8,
+      }).format(amount);
+    }
+  };
+
+  const getTrueCryptoAmount = (amount, selectedCurrency, selectedFiatCurrency) => {
+    if (selectedCurrency in prices && selectedFiatCurrency in prices[selectedCurrency]) {
+      const cryptoPriceInFiat = prices[selectedCurrency][selectedFiatCurrency];
+      if (cryptoPriceInFiat <= 0) {
+        throw new Error('Invalid cryptocurrency price');
+      }
+      const trueAmount = amount / cryptoPriceInFiat;
+      return trueAmount;
+    } else {
+      throw new Error('Currency or fiat not supported');
+    }
+  };
+
+  const classes = useStyles();
+  const { addToast } = useToasts();
+  const [showChart, setShowChart] = useState(false);
+
+  const [betAmount, setBetAmount] = useState("0.00");
+  const [bustPrice, setBustPrice] = useState("0");
+  const [bitcoinPrice, setBitcoinPrice] = useState(0);
+  const [openOrders, setOpenOrders] = useState([]);
+
+  const [multiplier, setMultiplier] = useState("2"); // State for multiplier
+  const [loading, setLoading] = useState(false); // Initialize loading state
+  const [limboResult, setLimboResult] = useState({ crashpoint: 1 }); // State to store limbo result
+  const chartContainerRef = useRef();
+  const candlestickSeriesRef = useRef();
+  const chart = useRef();
+  const series = useRef();
+  const lineSeries = useRef(null); // Ref for line series
+  const [data, setData] = useState([]); // State to store data points
+
+  const currentCandleStart = useRef(Math.floor(Date.now() / 1000));
+  const currentCandle = useRef(null);
+  const [tabValue, setTabValue] = useState(0);
+  const { lastMessage } = useWebSocket(WS_URL);
+  const candleInterval = 60; // 1 minute in seconds
+  const baselineSeries = useRef(null); // Ref for baseline series
+  const CANDLESTICK_SERIES_OPTIONS = {
+    upColor: 'rgb(54, 116, 217)',
+    borderUpColor: 'rgb(54, 116, 217)',
+    wickUpColor: 'rgb(54, 116, 217)',
+    downColor: 'rgb(225, 50, 85)',
+    borderDownColor: 'rgb(225, 50, 85)',
+    wickDownColor: 'rgb(225, 50, 85)',
+    borderVisible: false, // Hide the border
+  };
+  
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  const handleCashout = async (orderId, amount, pnl) => {
+    try {
+      // Notify the user about the cashout
+      console.log('Cashout successful');
+      console.log(orderId);
+      
+      // Emit the candlestick:sellorder event with the orderId as a string
+      CandleStickSocket.emit("candlestick:sellorder", orderId);
+      
+      // You can add additional logic here if needed
+    } catch (error) {
+      console.error('Error during cashout:', error);
+      // Handle error scenarios, such as displaying an error message to the user
+    }
+  };
+  
+    
+
+  
+  const handleMultiplierSliderChange = (newValue) => {
+    setMultiplier(newValue.toString());
+  };
+  function calculateBustPriceLong(entryPrice, leverageRatio) {
+    return entryPrice - (entryPrice / leverageRatio);
+}
+const updateBustPrice = (btcPrice, multiplier) => {
+  console.log("BTC Price:", btcPrice); // Debugging: Log BTC price
+  console.log("Multiplier:", multiplier); // Debugging: Log multiplier
+  // Ensure both bitcoin price and multiplier are valid numbers
+  if (!isNaN(btcPrice) && !isNaN(parseFloat(multiplier))) { // Parse multiplier as a number
+      // Calculate bust price using current bitcoin price and multiplier
+      const newBustPrice = calculateBustPriceLong(
+          parseFloat(btcPrice),
+          parseFloat(multiplier)
+      );
+      // Debugging: Log the calculated bust price
+      console.log("New Bust Price:", newBustPrice);
+      // Update bust price state with the latest multiplier value
+      setBustPrice(prevBustPrice => newBustPrice.toFixed(2));
+  }
+};
+
+const CHART_OPTIONS = {
+  layout: {
+        textColor: 'white',
+        background: { type: 'solid', color: '#0a0b1c' },  },
+        grid: {
+          vertLines: {
+            color: '#00000000', // Transparent color to hide vertical grid lines
+          },
+          horzLines: {
+            color: '#00000000', // Transparent color to hide horizontal grid lines
+          },
+        },
+        crosshair: {
+          // Change mode from default 'magnet' to 'normal'.
+          // Allows the crosshair to move freely without snapping to datapoints
+          mode: 1,
+        },
+          // Vertical crosshair line (showing Date in Label)
+          vertLine: {
+              width: 8,
+              color: '#C3BCDB44',
+              style: LineStyle.Solid,
+              labelBackgroundColor: '#9B7DFF',
+          },
+  
+          // Horizontal crosshair line (showing Price in Label)
+          horzLine: {
+              color: '#9B7DFF',
+              labelBackgroundColor: '#9B7DFF',
+          },
+  
+  priceScale: {
+    
+    position: 'right',
+    autoScale: true, // Otomatik ölçeklenmeyi devre dışı bırakır
+    mode: PriceScaleMode.Normal, // Fiyat ölçeği modunu belirler
+    invertScale: false,
+    alignLabels: true,
+},
+  timeScale: {
+    timeVisible: true,
+    secondsVisible: true, // Set seconds visibility to true for real-time data
+    timezone: 'UTC',
+  },
+  handleScroll: {
+    // Enable auto-following
+    mouseWheel: true, // Allow mouse wheel zooming
+    pressedMouseMove: true, // Allow panning via mouse click and drag
+  },
+  autoSize: true, // Enable auto-resizing of the chart
+  trackingMode: {
+    touch: true, // Enable kinetic scroll with touch gestures
+    mouse: false, // Disable kinetic scroll with mouse gestures
+  },
+  handleScale: {
+    mouseWheel: true, // Enable scaling with the mouse wheel
+    pinch: true, // Enable scaling with pinch/zoom gestures
+    axisPressedMouseMove: true, // Enable scaling by holding down the mouse button
+    axisDoubleClickReset: true, // Enable resetting scaling by double-clicking
+  },
+
+
+
+  watermark: {
+    color: 'hsl(215, 75%, 50%, 0.1)', 
+    visible: true,
+    text: 'ZEROBYTE INC', 
+    fontSize: 36,
+  },
+};
+
+// Use useEffect to fetch Bitcoin price and update bust price whenever bitcoin price or multiplier changes
+useEffect(() => {
+    // Update bust price when component mounts or when multiplier changes
+    updateBustPrice(bitcoinPrice, multiplier);
+}, [bitcoinPrice, multiplier]); // Update bust price when bitcoinPrice or multiplier changes
+
+
+useEffect(() => {
+  // Subscribe to the socket event for open orders
+  // Replace 'socketEventName' with the actual event name emitted for open orders
+  CandleStickSocket.on("openOrders:data", data => {
+    // Update state with received open orders data
+    setOpenOrders(data);
+  });
+
+  // Unsubscribe from socket events when component unmounts
+  return () => {
+    CandleStickSocket.off("openOrders:data");
+  };
+}, []);
+const [initialData, setInitialData] = useState([]);
+
+
+  // Fetch historical data on mount (1-minute interval)
+  useEffect(() => {
+    const fetchHistoricalData = async () => {
+      try {
+        const response = await axios.get(
+          'https://api.binance.com/api/v3/klines',
+          {
+            params: {
+              symbol: 'BTCUSDT',
+              interval: '1m', // 1-minute candlesticks
+              limit: 1000,
+            },
+          }
+        );
+
+        // Transform the data to the format required by the chart library
+        const data = response.data.map(([time, open, high, low, close]) => ({
+          time: Math.floor(time / 1000), // Convert to seconds
+          open: parseFloat(open),
+          high: parseFloat(high),
+          low: parseFloat(low),
+          close: parseFloat(close),
+        }));
+
+        setInitialData(data);
+      } catch (error) {
+        console.error('Error fetching historical data:', error);
+      }
+    };
+
+    fetchHistoricalData();
+  }, []);
+
+  // Initialize chart and add candlestick series
+  useEffect(() => {
+    if (chartContainerRef.current && initialData.length > 0) {
+      if (chart.current) {
+        chart.current.remove();
+      }
+
+      chart.current = createChart(chartContainerRef.current, CHART_OPTIONS);
+      series.current = chart.current.addCandlestickSeries(CANDLESTICK_SERIES_OPTIONS);
+
+      // Set initial data
+      series.current.setData(initialData);
+    }
+  }, [initialData]);
+
+  // WebSocket for real-time data
+  useEffect(() => {
+    const ws = new WebSocket('wss://fstream.binance.com/ws/btcusdt@trade');
+
+    ws.onmessage = (event) => {
+      const tradeData = JSON.parse(event.data);
+      const tradePrice = parseFloat(tradeData.p);
+      const tradeTime = Math.floor(tradeData.T / 1000); // Convert to seconds
+
+      // If it's the start of a new 1-minute candle
+      if (currentCandle.current === null || tradeTime >= currentCandleStart.current + candleInterval) {
+        // Close the previous candle if it exists
+        if (currentCandle.current !== null) {
+          series.current.update(currentCandle.current);
+        }
+
+        // Start a new candle
+        currentCandleStart.current = Math.floor(tradeTime / candleInterval) * candleInterval; // Round to nearest minute
+        currentCandle.current = {
+          time: currentCandleStart.current,
+          open: tradePrice,
+          high: tradePrice,
+          low: tradePrice,
+          close: tradePrice,
+        };
+        series.current.update(currentCandle.current); // Immediate update when new candle starts
+      } else {
+        // Update the current candle's high, low, and close in real-time
+        currentCandle.current.high = Math.max(currentCandle.current.high, tradePrice);
+        currentCandle.current.low = Math.min(currentCandle.current.low, tradePrice);
+        currentCandle.current.close = tradePrice;
+        
+        // Update the series to reflect the live changes
+        series.current.update(currentCandle.current);
+      }
+    };
+
+    return () => {
+      ws.close(); // Close WebSocket connection on component unmount
+    };
+  }, []);
+
+
+  const springProps = useSpring({
+    from: { crashpoint: 1 },
+    to: { crashpoint: limboResult.crashpoint ? parseFloat(limboResult.crashpoint) : 1 },
+    config: { duration: 250 }, // Adjust duration to make animation faster (e.g., 500 milliseconds)
+  });
+  
+
+
+  const onMultiplierChange = (event) => {
+    // Ensure multiplier is not lower than 2 and not higher than 1000
+    const newMultiplier = Math.max(2, Math.min(1000, parseFloat(event.target.value)));
+    console.log("New multiplier value:", newMultiplier); // Log the new multiplier value
+    // Update multiplier state
+    setMultiplier(newMultiplier.toString()); // Convert to string before updating state
+};
+
+
+// Function to handle multiplier button click
+const handleMultiplierButton = (value) => {
+  // Calculate new multiplier value
+  const newMultiplier = Math.max(2, Math.min(1000, multiplier * value));
+  console.log("New multiplier value:", newMultiplier); // Log the new multiplier value
+  // Update multiplier state
+  setMultiplier(newMultiplier.toString()); // Convert to string before updating state
+};
+
+  const handleBetAmountChange = (event) => {
+    const newBetAmount = event.target.value;
+    if (!isNaN(newBetAmount)) {
+      setBetAmount(newBetAmount);
+    }
+  };
+
+  const handleBetAmountButton = (factor) => {
+    const newBetAmount = parseFloat(betAmount) * factor;
+    setBetAmount(newBetAmount.toFixed(2));
+  };
+
+  const success = msg => {
+    // addToast(msg, { appearance: "success" });
+  };
+  const onBetChange = e => {
+    setBetAmount(e.target.value);
+  };
+  const [target, setTarget] = useState("2");
+
+
+  const onTargetChange = e => {
+    setTarget(e.target.value);
+  };
+  const open = async (x) => {
+    setLimboResult(x); // Update limbo result from the event data
+  };
+
+  const handleLimboBet = () => {
+    if (loading) return;
+    setLoading(true);
+
+    let amountToSend;
+    
+    if (DisplayForFiat) {
+      // Calculate true cryptocurrency amount if DisplayForFiat is true
+      amountToSend = getTrueCryptoAmount(betAmount, selectedCurrency, selectedFiatCurrency);
+    } else {
+      // Use the regular amount if DisplayForFiat is false
+      amountToSend = betAmount;
+    }
+
+    CandleStickSocket.emit("candlestick:buyorder", {
+      amount: amountToSend,
+      multiplier: multiplier,
+      bustPrice: bustPrice,
+      entryPrice: bitcoinPrice,
+      currency: selectedCurrency // Add currency to the emit
+    });
+
+    setTimeout(() => {
+      setLoading(false);
+    }, 350);
+  };
+  const creationError = msg => {
+    // Update state
+    setLoading(true); // Set loading state to true when placing the bet
+
+    addToast(msg, { appearance: "error" });
+  };
+
+  // Add new features
+  const [positionType, setPositionType] = useState("long"); // long or short
+  const [orderType, setOrderType] = useState("market"); // market or limit
+  
+  // Add quick leverage options
+  const leverageOptions = [5, 10, 25, 50, 100];
+
+  const [marketData, setMarketData] = useState({
+    BTC: { price: '0', change: '0', volume: '0' },
+    ETH: { price: '0', change: '0', volume: '0' },
+    DOGE: { price: '0', change: '0', volume: '0' },
+    LTC: { price: '0', change: '0', volume: '0' },
+    SOL: { price: '0', change: '0', volume: '0' },
+    XRP: { price: '0', change: '0', volume: '0' },
+    ADA: { price: '0', change: '0', volume: '0' },
+    AVAX: { price: '0', change: '0', volume: '0' },
+  });
+
+  const [selectedCoin, setSelectedCoin] = useState({
+    symbol: 'BTC',
+    name: 'Bitcoin',
+    logo: COIN_LOGOS.BTC,
+  });
+
+  const wsRef = useRef(null);
+
+  // WebSocket bağlantısını yönetme
+  useEffect(() => {
+    const connectWebSocket = () => {
+      // Tüm coinler için WebSocket streams
+      const streams = [
+        'btcusdt@ticker', 'ethusdt@ticker', 'dogeusdt@ticker', 
+        'ltcusdt@ticker', 'solusdt@ticker', 'xrpusdt@ticker',
+        'adausdt@ticker', 'avaxusdt@ticker'
+      ];
+
+      const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${streams.join('/')}`);
+      wsRef.current = ws;
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.e === '24hrTicker') {
+          const symbol = data.s.replace('USDT', '');
+          setMarketData(prev => ({
+            ...prev,
+            [symbol]: {
+              price: parseFloat(data.c).toLocaleString('en-US', { 
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2 
+              }),
+              change: parseFloat(data.p).toLocaleString('en-US', { 
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+                signDisplay: 'always'
+              }),
+              volume: `${(parseFloat(data.v) * parseFloat(data.c) / 1000000).toFixed(2)}M`,
+            }
+          }));
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket connection closed. Reconnecting...');
+        setTimeout(connectWebSocket, 5000);
+      };
+    };
+
+    connectWebSocket();
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
+
+  const coins = [
+    {
+      symbol: 'BTC',
+      name: 'Bitcoin',
+      logo: COIN_LOGOS.BTC,
+    },
+    {
+      symbol: 'ETH',
+      name: 'Ethereum',
+      logo: COIN_LOGOS.ETH,
+    },
+    {
+      symbol: 'DOGE',
+      name: 'Dogecoin',
+      logo: COIN_LOGOS.DOGE,
+    },
+    {
+      symbol: 'LTC',
+      name: 'Litecoin',
+      logo: COIN_LOGOS.LTC,
+    },
+    {
+      symbol: 'SOL',
+      name: 'Solana',
+      logo: COIN_LOGOS.SOL,
+    },
+    {
+      symbol: 'XRP',
+      name: 'Ripple',
+      logo: COIN_LOGOS.XRP,
+    },
+    {
+      symbol: 'ADA',
+      name: 'Cardano',
+      logo: COIN_LOGOS.ADA,
+    },
+    {
+      symbol: 'AVAX',
+      name: 'Avalanche',
+      logo: COIN_LOGOS.AVAX,
+    },
+  ];
+
+  // Menu için anchor element state'i
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  // Menu açma/kapama fonksiyonları
+  const handleClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleCoinSelect = (coin) => {
+    console.log("Navigating to:", `/futures/${coin.symbol}`);
+    props.history.push(`/futures/${coin.symbol}`);
+    setAnchorEl(null);
+  };
+
+  // Geçmiş verileri alma fonksiyonu
+  const fetchHistoricalData = async (symbolToFetch) => {
+    try {
+      const response = await axios.get(
+        'https://api.binance.com/api/v3/klines',
+        {
+          params: {
+            symbol: `${symbolToFetch}USDT`,
+            interval: '1m',
+            limit: 1000,
+          },
+        }
+      );
+
+      const data = response.data.map(([time, open, high, low, close]) => ({
+        time: Math.floor(time / 1000),
+        open: parseFloat(open),
+        high: parseFloat(high),
+        low: parseFloat(low),
+        close: parseFloat(close),
+      }));
+
+      // Clear existing chart data and set new data
+      if (chart.current && series.current) {
+        series.current.setData(data);
+      }
+    } catch (error) {
+      console.error('Error fetching historical data:', error);
+    }
+  };
+
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredCoins = coins.filter(coin => 
+    coin.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    coin.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // WebSocket ve veri güncelleme mantığı için useEffect
+  useEffect(() => {
+    if (symbol) {
+      // WebSocket bağlantısı
+      const ws = new WebSocket(`wss://fstream.binance.com/ws/${symbol.toLowerCase()}usdt@trade`);
+      
+      ws.onmessage = (event) => {
+        const tradeData = JSON.parse(event.data);
+        // ... veri işleme mantığı ...
+      };
+
+      // Tarihsel verileri getir
+      fetchHistoricalData(symbol);
+
+      return () => {
+        ws.close();
+      };
+    }
+  }, [symbol]); // symbol değiştiğinde effect'i tekrar çalıştır
+
+  // Update selectedCoin when symbol changes
+  useEffect(() => {
+    if (symbol) {
+      const matchedCoin = coins.find(coin => coin.symbol === symbol);
+      if (matchedCoin) {
+        setSelectedCoin(matchedCoin);
+        
+        // Update WebSocket connection for price data
+        if (wsRef.current) {
+          wsRef.current.close();
+        }
+        
+        // Create new WebSocket connection for selected symbol
+        const ws = new WebSocket(`wss://fstream.binance.com/ws/${symbol.toLowerCase()}usdt@trade`);
+        wsRef.current = ws;
+
+        ws.onmessage = (event) => {
+          const tradeData = JSON.parse(event.data);
+          const tradePrice = parseFloat(tradeData.p);
+          setBitcoinPrice(tradePrice); // Update current price
+          
+          // Update candle data
+          updateCandleData(tradeData);
+        };
+
+        // Fetch historical data for new symbol
+        fetchHistoricalData(symbol);
+      }
+    }
+  }, [symbol]); // Dependency on symbol
+
+  // Function to update candle data
+  const updateCandleData = (tradeData) => {
+    const tradePrice = parseFloat(tradeData.p);
+    const tradeTime = Math.floor(tradeData.T / 1000);
+
+    if (currentCandle.current === null || tradeTime >= currentCandleStart.current + candleInterval) {
+      if (currentCandle.current !== null) {
+        series.current.update(currentCandle.current);
+      }
+
+      currentCandleStart.current = Math.floor(tradeTime / candleInterval) * candleInterval;
+      currentCandle.current = {
+        time: currentCandleStart.current,
+        open: tradePrice,
+        high: tradePrice,
+        low: tradePrice,
+        close: tradePrice,
+      };
+      series.current.update(currentCandle.current);
+    } else {
+      currentCandle.current.high = Math.max(currentCandle.current.high, tradePrice);
+      currentCandle.current.low = Math.min(currentCandle.current.low, tradePrice);
+      currentCandle.current.close = tradePrice;
+      
+      series.current.update(currentCandle.current);
+    }
+  };
+
+  // Update WebSocket connection for market data
+  useEffect(() => {
+    const connectWebSocket = () => {
+      const streams = coins.map(coin => `${coin.symbol.toLowerCase()}usdt@ticker`);
+      const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${streams.join('/')}`);
+      wsRef.current = ws;
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.e === '24hrTicker') {
+          const symbol = data.s.replace('USDT', '');
+          setMarketData(prev => ({
+            ...prev,
+            [symbol]: {
+              price: parseFloat(data.c).toLocaleString('en-US', { 
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2 
+              }),
+              change: parseFloat(data.p).toLocaleString('en-US', { 
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+                signDisplay: 'always'
+              }),
+              volume: `${(parseFloat(data.v) * parseFloat(data.c) / 1000000).toFixed(2)}M`,
+            }
+          }));
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket connection closed. Reconnecting...');
+        setTimeout(connectWebSocket, 5000);
+      };
+    };
+
+    connectWebSocket();
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []); // Run once on mount
+
+  // Initialize chart when component mounts
+  useEffect(() => {
+    if (chartContainerRef.current) {
+      chart.current = createChart(chartContainerRef.current, CHART_OPTIONS);
+      series.current = chart.current.addCandlestickSeries(CANDLESTICK_SERIES_OPTIONS);
+      
+      // Fetch initial data
+      if (symbol) {
+        fetchHistoricalData(symbol);
+      }
+    }
+
+    return () => {
+      if (chart.current) {
+        chart.current.remove();
+      }
+    };
+  }, []); // Run once on mount
+
+  return (
+    <div className={classes.root}>
+      <div className={classes.container}>
+        <div className={classes.headerContainer}>
+          <div className={classes.coinSelector} onClick={handleClick}>
+            <div className={classes.coinInfo}>
+              <img 
+                src={selectedCoin.logo} 
+                alt={selectedCoin.name} 
+                className={classes.coinLogo} 
+              />
+              <div className={classes.coinName}>
+                <span className="symbol">{selectedCoin.symbol}</span>
+                <span className="name">{selectedCoin.name}</span>
+              </div>
+            </div>
+            <div className={classes.priceInfo}>
+              <span className="price">
+                ${marketData[selectedCoin.symbol]?.price || '0.00'}
+              </span>
+              <span className={`change ${
+                parseFloat(marketData[selectedCoin.symbol]?.change || 0) >= 0 
+                  ? classes.changePositive 
+                  : classes.changeNegative
+              }`}>
+                {marketData[selectedCoin.symbol]?.change || '0.00'}
+              </span>
+              <span className="volume">
+                24h Vol: ${marketData[selectedCoin.symbol]?.volume || '0.00'}
+              </span>
+            </div>
+          </div>
+
+          <Menu
+            anchorEl={anchorEl}
+            keepMounted
+            open={Boolean(anchorEl)}
+            onClose={handleClose}
+            classes={{ paper: classes.dropdownMenu }}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'left',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'left',
+            }}
+          >
+            <div className={classes.searchBox}>
+              <SearchIcon style={{ color: '#848E9C', width: 20 }} />
+              <input 
+                type="text" 
+                placeholder="Search coin..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            {filteredCoins.map((coin) => (
+              <MenuItem 
+                key={coin.symbol} 
+                onClick={() => handleCoinSelect(coin)}
+                className={`${classes.menuItem} ${symbol === coin.symbol ? 'selected' : ''}`}
+              >
+                <div className="coin-info">
+                  <img src={coin.logo} alt={coin.name} />
+                  <div>
+                    <div className="symbol">{coin.symbol}</div>
+                    <div className="name">{coin.name}</div>
+                  </div>
+                </div>
+                <div className="price-info">
+                  <div className="price">
+                    ${marketData[coin.symbol]?.price || '0.00'}
+                  </div>
+                  <div className={parseFloat(marketData[coin.symbol]?.change || 0) >= 0 ? 'change-positive' : 'change-negative'}>
+                    {marketData[coin.symbol]?.change || '0.00'}%
+                  </div>
+                </div>
+              </MenuItem>
+            ))}
+          </Menu>
+        </div>
+
+        <div className={classes.betSection}>
+          <div className={classes.betContainer}>
+            <div className={classes.tabsContainer}>
+              <Tabs
+                value={positionType === "long" ? 0 : 1}
+                onChange={(e, newValue) => setPositionType(newValue === 0 ? "long" : "short")}
+                variant="fullWidth"
+                TabIndicatorProps={{
+                  style: {
+                    display: "none" // Hide default indicator since we're using background color
+                  }
+                }}
+              >
+                <Tab 
+                  className={classes.customTab} 
+                  label="Long" 
+                  style={{
+                    backgroundColor: positionType === "long" ? "#0d3c2c" : "transparent",
+                    color: positionType === "long" ? "#0ecb81" : "#e4e4e4",
+                  }}
+                />
+                <Tab 
+                  className={classes.customTab} 
+                  label="Short"
+                  style={{
+                    backgroundColor: positionType === "short" ? "#3d1f24" : "transparent",
+                    color: positionType === "short" ? "#f6465d" : "#e4e4e4",
+                  }}
+                />
+              </Tabs>
+            </div>
+
+            {/* Bet Amount - İlk sıraya taşındı */}
+            <div className={classes.title}>Bet Amount</div>
+            <div className={classes.inputContainer}>
+              <Box className={classes.placeBet}>
+                <Box className={classes.betCont}>
+                  <BetInput
+                    label=""
+                    variant="filled"
+                    value={betAmount}
+                    onChange={onBetChange}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment className={classes.inputIcon} position="start">
+                          <img 
+                            style={{ height: 17, width: 17 }} 
+                            src={logoUrl} 
+                            alt={`${selectedCurrency} logo`} 
+                          />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Box>
+              </Box>
+            </div>
+
+            {/* Leverage - İkinci sıraya taşındı */}
+            <div className={classes.title}>Leverage</div>
+            <div className={classes.inputContainer}>
+              <Box className={classes.placeBet}>
+                <Box className={classes.betCont}>
+                  <BetInput
+                    label=""
+                    variant="filled"
+                    value={multiplier}
+                    onChange={onMultiplierChange}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment
+                          className={classes.inputIcon}
+                          position="start"
+                        >
+                          <img src="https://shuffle.com/icons/increase.svg" alt="Money Icon" style={{ width: 16, height: 16 }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Box>
+              </Box>
+              <div className={classes.multiplierContainer}>
+                <Button
+                  className={classes.multiplier}
+                  size="small"
+                  color="primary"
+                  variant="contained"
+                  onClick={() => handleMultiplierButton(0.5)}
+                >
+                  <span className={classes.reverse}>1/2</span>
+                </Button>
+                <Button
+                  className={classes.multiplier}
+                  size="small"
+                  color="primary"
+                  variant="contained"
+                  onClick={() => handleMultiplierButton(2)}
+                >
+                  <span className={classes.reverse}>2x</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Bust Price */}
+            <div className={classes.title}>Bust Price</div>
+            <ResultInput
+              label=""
+              value={bustPrice}
+              readOnly
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment
+                    className={classes.inputIcon}
+                    position="end"
+                  >
+                    <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1.png" alt="Money Icon" style={{ width: 16, height: 16 }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            {/* Place Bet Button */}
+            <Button 
+              className={`${classes.placeBetButton} ${
+                positionType === "long" ? "longButton" : "shortButton"
+              }`}
+              disabled={loading}
+              onClick={handleLimboBet}
+            >
+              {loading ? (
+                <ClipLoader color="#fff" size={10} />
+              ) : (
+                `Place ${positionType.toUpperCase()}`
+              )}
+            </Button>
+          </div>
+
+          {/* Limbo Section */}
+          <div className={classes.limboSection} >
+      <div ref={chartContainerRef} style={{ width: "100%", height: "100%", }}></div>
+  
+
+
+          </div>
+        </div>
+      </div>
+      <div className={classes.orderContainer}>
+      <div className={classes.tableContainer}>
+        <table className={classes.table}>
+          <thead>
+            <tr className={classes.tableHead}>
+              <th className={classes.tableCell}>Amount</th>
+              <th className={classes.tableCell}>Entry Price</th>
+              <th className={classes.tableCell}>Multiplier</th>
+              <th className={classes.tableCell}>Bust Price</th>
+              <th className={classes.tableCell}>Current Price</th>
+              <th className={classes.tableCell}>PNL</th>
+              <th className={classes.tableCell}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {openOrders.map((order) => (
+              <tr key={order.id}>
+<td className={classes.tableCell}>
+  <img src="http://localhost:3000/static/media/coin.077d403e.png" alt="icon" className={classes.imageIcon} />
+  {order.amount}
+</td>
+                <td className={classes.tableCell}>{order.entryPrice}</td>
+                <td className={classes.tableCell}>{order.multiplier}</td>
+                <td className={classes.tableCell}>{order.bustPrice}</td>
+                <td className={classes.tableCell}>{order.currentPrice}</td>
+                <td className={classes.tableCell}>{order.pnl}</td>
+                <td className={classes.tableCell}>
+                  <Button className={classes.cashoutButton} onClick={() => handleCashout(order._id)}>Cashout</Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+
+</div>
+
+
+
+  );
+};
+
+Futures.propTypes = {
+  user: PropTypes.object,
+  isAuthenticated: PropTypes.bool,
+  selectedCurrency: PropTypes.string.isRequired,
+  selectedLogo: PropTypes.string.isRequired,
+  selectedFiatCurrency: PropTypes.string.isRequired,
+  DisplayFiat: PropTypes.string.isRequired,
+  DisplayForFiat: PropTypes.string.isRequired,
+};
+
+const mapStateToProps = (state) => ({
+  user: state.auth.user,
+  isAuthenticated: state.auth.isAuthenticated,
+  selectedCurrency: state.auth.selectedCurrency,
+  selectedLogo: state.auth.selectedLogo,
+  selectedFiatCurrency: state.auth.selectedFiatCurrency,
+  DisplayFiat: state.auth.DisplayFiat,
+  DisplayForFiat: state.auth.DisplayForFiat,
+});
+
+export default withRouter(
+  connect(mapStateToProps, { updateCurrency, updateFiat, DisplayFiat })(Futures)
+);

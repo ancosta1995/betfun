@@ -1,0 +1,12 @@
+$primary-color: #e74c3c; // Add colon for variable declaration
+
+.app {
+  background-color: $primary-color; // Add colon
+  text-align: center; // Add colon
+  padding: 2rem;
+
+  h1 {
+    color: white; // Add colon
+    font-size: 2rem; // Add colon
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "casino-app",
+  "version": "1.0.0",
+  "description": "Casino application with backend and frontend",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm start --prefix frontend\"",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm start --prefix frontend",
+    "build": "npm run build --prefix backend",
+    "start": "npm start --prefix backend",
+    "deploy": "npm run build && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.1"
+  }
+}

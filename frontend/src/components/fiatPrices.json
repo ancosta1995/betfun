@@ -1,0 +1,82 @@
+[
+  {
+    "name": "USD",
+    "price": "1",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "EUR",
+    "price": "0.907239",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "MXN",
+    "price": "20.07",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "BRL",
+    "price": "5.65",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "JPY",
+    "price": "142.4",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "IDR",
+    "price": "15463.72",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "CAD",
+    "price": "1.36",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "CNY",
+    "price": "7.12",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "DKK",
+    "price": "6.77",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "KRW",
+    "price": "1344.26",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "INR",
+    "price": "83.99",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "PHP",
+    "price": "56.33",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "TRY",
+    "price": "34.05",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "NZD",
+    "price": "1.63",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "ARS",
+    "price": "957.75",
+    "__typename": "FiatPrice"
+  },
+  {
+    "name": "RUB",
+    "price": "91.02",
+    "__typename": "FiatPrice"
+  }
+]
