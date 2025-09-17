@@ -25,11 +25,11 @@ runCommand('npm install', path.join(__dirname, 'backend'));
 
 // 2. Instalar dependências do frontend
 console.log('2️⃣ Instalando dependências do FRONTEND...');
-runCommand('npm install', path.join(__dirname, 'frontend'));
+runCommand('npm run install:linux', path.join(__dirname, 'frontend'));
 
 // 3. Fazer build do frontend
 console.log('3️⃣ Fazendo BUILD do FRONTEND...');
-runCommand('npm run build', path.join(__dirname, 'frontend'));
+runCommand('npm run build:linux', path.join(__dirname, 'frontend'));
 
 // 4. Verificar se .env existe
 const envPath = path.join(__dirname, 'backend', '.env');
