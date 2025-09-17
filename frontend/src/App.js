@@ -409,15 +409,16 @@ const App = () => {
   // Fetch site schema from API
   const fetchData = async () => {
     setLoading(true);
-    // Coundown stage commences
+    // Coundown stage commences - reduzido em desenvolvimento
+    const delayTime = process.env.NODE_ENV === 'development' ? 0 : 500;
     await new Promise(resolve => {
-      let secunde = 1;
+      let secunde = process.env.NODE_ENV === 'development' ? 0 : 1;
       setFinalCountdown(secunde);
       let int = setInterval(() => {
         secunde -= 1;
         setFinalCountdown(secunde);
         if (secunde <= 0) { clearInterval(int); setFinalCountdown(""); resolve(); }
-      }, 500);
+      }, delayTime);
     });
     try {
       const schema = await getSiteSchema();
@@ -514,7 +515,7 @@ const App = () => {
                   <Box height="auto" />
 
                   <Switch>
-                    <Redirect exact from="/" to="home" />
+                    <Redirect exact from="/" to="/home" />
 
                     <Route exact path="/cups" component={Cups} />
                     <Route

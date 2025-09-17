@@ -931,3 +931,190 @@ export const makeWithdraw = async (username, user_id, token, items, gameCode) =>
     }
   });
 };
+
+// Admin API Methods
+export const getUsersList = async () => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.get("/external/v1/users/list");
+      resolve(response.data);
+    } catch (error) {
+      console.error('Error fetching users list:', error);
+      reject(error);
+    }
+  });
+};
+
+export const getUserDetails = async (userId) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.get(`/external/v1/users/lookup/${userId}`);
+      resolve(response.data);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+export const updateUser = async (userData) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.post("/external/v1/users/update", userData);
+      resolve(response.data);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+export const getUserWalletHistory = async (userId) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.get(`/external/v1/users/wallet-history/${userId}`);
+      resolve(response.data);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+export const getTransactionsList = async () => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.get("/external/v1/transactions/list");
+      resolve(response.data);
+    } catch (error) {
+      console.error('Error fetching transactions list:', error);
+      reject(error);
+    }
+  });
+};
+
+export const getTransactionDetails = async (transactionId) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.get(`/external/v1/transactions/lookup/${transactionId}`);
+      resolve(response.data);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+export const confirmTransaction = async (transactionId) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.post(`/external/v1/transactions/confirm/${transactionId}`);
+      resolve(response.data);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+export const cancelTransaction = async (transactionId) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.post(`/external/v1/transactions/cancel/${transactionId}`);
+      resolve(response.data);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+export const getCouponsList = async () => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.get("/external/v1/coupons/list");
+      resolve(response.data);
+    } catch (error) {
+      console.error('Error fetching coupons list:', error);
+      reject(error);
+    }
+  });
+};
+
+export const getCouponDetails = async (couponId) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.get(`/external/v1/coupons/lookup/${couponId}`);
+      resolve(response.data);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+export const createCoupon = async (couponData) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.put("/external/v1/coupons/add", couponData);
+      resolve(response.data);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+export const getActiveTrivia = async () => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.get("/external/v1/trivia/");
+      resolve(response.data);
+    } catch (error) {
+      console.error('Error fetching active trivia:', error);
+      reject(error);
+    }
+  });
+};
+
+export const createTrivia = async (triviaData) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.put("/external/v1/trivia/create", triviaData);
+      resolve(response.data);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+export const endTrivia = async () => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const response = await API.post("/external/v1/trivia/end");
+      resolve(response.data);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+// Dashboard statistics
+export const getDashboardStats = async () => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      console.log('Fetching dashboard stats...');
+      const response = await API.get("/external/v1/statistics/dashboard");
+      console.log('Dashboard stats response:', response.data);
+      
+      // Process the statistics data to match what the frontend expects
+      const stats = response.data;
+      
+      // Extract the values we need for the dashboard
+      const processedStats = {
+        totalUsers: stats.userStatistics ? stats.userStatistics.totalValueToday : 0,
+        activeUsers: stats.userStatistics ? (stats.userStatistics.isRising ? stats.userStatistics.totalValueToday : 0) : 0,
+        totalBets: stats.gamesStatistics ? Object.values(stats.gamesStatistics).reduce((total, game) => total + (game.totalValueToday || 0), 0) : 0,
+        totalVolume: stats.profitStatistics ? stats.profitStatistics.totalValueToday : 0
+      };
+      
+      console.log('Processed stats:', processedStats);
+      resolve(processedStats);
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      reject(error);
+    }
+  });
+};

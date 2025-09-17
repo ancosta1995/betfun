@@ -30,6 +30,11 @@ import {
 import Users from './components/Users';
 import Games from './components/Games';
 import Settings from './components/Settings';
+import Transactions from './components/Transactions';
+import Coupons from './components/Coupons';
+import Trivia from './components/Trivia';
+import { getDashboardStats } from '../services/api.service';
+import { useToasts } from 'react-toast-notifications';
 
 const drawerWidth = 240;
 
@@ -107,6 +112,7 @@ const useStyles = makeStyles((theme) => ({
 
 const AdminPanel = () => {
   const classes = useStyles();
+  const { addToast } = useToasts();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState('dashboard');
   const [stats, setStats] = useState({
@@ -115,10 +121,38 @@ const AdminPanel = () => {
     totalBets: 0,
     totalVolume: 0,
   });
+  const [loading, setLoading] = useState(true);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
+
+  // Fetch dashboard statistics
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        console.log('Fetching dashboard stats...');
+        setLoading(true);
+        const data = await getDashboardStats();
+        console.log('Received dashboard stats:', data);
+        setStats({
+          totalUsers: data.totalUsers || 0,
+          activeUsers: data.activeUsers || 0,
+          totalBets: data.totalBets || 0,
+          totalVolume: data.totalVolume || 0,
+        });
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+        addToast('Failed to fetch dashboard statistics: ' + (error.response?.data?.error || error.message || error.toString()), { appearance: 'error' });
+        setLoading(false);
+      }
+    };
+
+    if (selectedTab === 'dashboard') {
+      fetchStats();
+    }
+  }, [selectedTab, addToast]);
 
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, value: 'dashboard' },
@@ -193,7 +227,7 @@ const AdminPanel = () => {
                       Total Users
                     </Typography>
                     <Typography className={classes.cardValue}>
-                      {stats.totalUsers.toLocaleString()}
+                      {loading ? 'Loading...' : stats.totalUsers.toLocaleString()}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -205,7 +239,7 @@ const AdminPanel = () => {
                       Active Users
                     </Typography>
                     <Typography className={classes.cardValue}>
-                      {stats.activeUsers.toLocaleString()}
+                      {loading ? 'Loading...' : stats.activeUsers.toLocaleString()}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -217,7 +251,7 @@ const AdminPanel = () => {
                       Total Bets
                     </Typography>
                     <Typography className={classes.cardValue}>
-                      {stats.totalBets.toLocaleString()}
+                      {loading ? 'Loading...' : stats.totalBets.toLocaleString()}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -229,7 +263,7 @@ const AdminPanel = () => {
                       Total Volume
                     </Typography>
                     <Typography className={classes.cardValue}>
-                      ${stats.totalVolume.toLocaleString()}
+                      {loading ? 'Loading...' : `${stats.totalVolume.toLocaleString()}`}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -237,7 +271,10 @@ const AdminPanel = () => {
             </Grid>
           )}
           {selectedTab === 'users' && <Users />}
+          {selectedTab === 'transactions' && <Transactions />}
           {selectedTab === 'games' && <Games />}
+          {selectedTab === 'coupons' && <Coupons />}
+          {selectedTab === 'trivia' && <Trivia />}
           {selectedTab === 'settings' && <Settings />}
         </Container>
       </main>

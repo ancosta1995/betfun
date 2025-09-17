@@ -40,15 +40,19 @@ const validateJWT = async (req, res, next) => {
 // Middleware to allow admins only
 const allowAdminsOnly = async (req, res, next) => {
   // If user is not authenticated
-  if (req.user) {
+  if (!req.user) {
     return next(new Error("Authentication is needed!"));
   }
 
   // Get user from db
-  const user = await User.findOne({ _id: req.user });
+  const user = await User.findOne({ _id: req.user.id });
 
   // If user is admin / mod / dev
-  return next();
+  if (user && user.rank >= 3) {
+    return next();
+  } else {
+    return next(new Error("Insufficient permissions!"));
+  }
 };
 
 // Export middlewares

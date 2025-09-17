@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   makeStyles,
   Paper,
@@ -9,7 +9,12 @@ import {
   TextField,
   Button,
   Divider,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
 } from '@material-ui/core';
+import { useToasts } from 'react-toast-notifications';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -60,6 +65,25 @@ const useStyles = makeStyles((theme) => ({
       color: '#9EA9BF',
     },
   },
+  formControlSelect: {
+    marginBottom: theme.spacing(2),
+    width: '100%',
+    '& .MuiOutlinedInput-root': {
+      color: '#fff',
+      '& fieldset': {
+        borderColor: '#2f3947',
+      },
+      '&:hover fieldset': {
+        borderColor: '#2f3947',
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: '#2f3947',
+      },
+    },
+    '& .MuiInputLabel-root': {
+      color: '#9EA9BF',
+    },
+  },
   saveButton: {
     backgroundColor: '#4CAF50',
     color: '#fff',
@@ -71,6 +95,7 @@ const useStyles = makeStyles((theme) => ({
 
 const Games = () => {
   const classes = useStyles();
+  const { addToast } = useToasts();
   const [games, setGames] = useState({
     coinflip: {
       enabled: true,
@@ -90,7 +115,46 @@ const Games = () => {
       maxBet: 200,
       houseEdge: 4,
     },
+    jackpot: {
+      enabled: true,
+      minBet: 1,
+      maxBet: 100,
+      houseEdge: 5,
+    },
+    dice: {
+      enabled: true,
+      minBet: 1,
+      maxBet: 500,
+      houseEdge: 1,
+    },
+    mines: {
+      enabled: true,
+      minBet: 1,
+      maxBet: 1000,
+      houseEdge: 2,
+    },
+    plinko: {
+      enabled: true,
+      minBet: 1,
+      maxBet: 500,
+      houseEdge: 2.5,
+    },
+    // Adicione mais jogos conforme necessário
   });
+
+  // Em uma implementação real, você buscaria os jogos do backend
+  // useEffect(() => {
+  //   const fetchGames = async () => {
+  //     try {
+  //       // const response = await api.get('/admin/games');
+  //       // setGames(response.data);
+  //     } catch (error) {
+  //       console.error('Error fetching games:', error);
+  //       addToast('Failed to fetch games', { appearance: 'error' });
+  //     }
+  //   };
+  //   fetchGames();
+  // }, [addToast]);
 
   const handleToggleGame = (game) => {
     setGames({
@@ -110,6 +174,17 @@ const Games = () => {
         [field]: value,
       },
     });
+  };
+
+  const handleSaveChanges = async () => {
+    try {
+      // Em uma implementação real, você salvaria as configurações no backend
+      // await api.post('/admin/games', games);
+      addToast('Game settings saved successfully', { appearance: 'success' });
+    } catch (error) {
+      console.error('Error saving game settings:', error);
+      addToast('Failed to save game settings', { appearance: 'error' });
+    }
   };
 
   const renderGameSettings = (gameName, gameData) => (
@@ -186,6 +261,7 @@ const Games = () => {
           variant="contained"
           className={classes.saveButton}
           fullWidth
+          onClick={handleSaveChanges}
         >
           Save Changes
         </Button>

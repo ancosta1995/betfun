@@ -3,14 +3,16 @@
   "version": "1.0.0",
   "description": "Casino application with backend and frontend",
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix backend\" \"npm start --prefix frontend\"",
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run start:fast --prefix frontend\"",
+    "dev:slow": "concurrently \"npm run dev --prefix backend\" \"npm start --prefix frontend\"",
     "dev:backend": "npm run dev --prefix backend",
-    "dev:frontend": "npm start --prefix frontend",
+    "dev:frontend": "npm run start:fast --prefix frontend",
     "build": "npm run build --prefix backend",
     "start": "npm start --prefix backend",
     "deploy": "npm run build && npm start"
   },
   "devDependencies": {
+    "@welldone-software/why-did-you-render": "^10.0.1",
     "concurrently": "^8.2.1"
   }
 }

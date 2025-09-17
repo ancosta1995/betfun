@@ -15,6 +15,12 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
 } from '@material-ui/core';
 import {
   Search as SearchIcon,
@@ -22,7 +28,10 @@ import {
   CheckCircle as SuccessIcon,
   Cancel as FailedIcon,
   Schedule as PendingIcon,
+  Info as InfoIcon,
 } from '@material-ui/icons';
+import { useToasts } from 'react-toast-notifications';
+import { getTransactionsList, getTransactionDetails, confirmTransaction, cancelTransaction } from '../../services/api.service';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -85,6 +94,10 @@ const useStyles = makeStyles((theme) => ({
     backgroundColor: '#f44336',
     color: '#fff',
   },
+  chipManual: {
+    backgroundColor: '#2196F3',
+    color: '#fff',
+  },
   amount: {
     fontFamily: 'Poppins',
     fontWeight: 500,
@@ -95,30 +108,61 @@ const useStyles = makeStyles((theme) => ({
   amountNegative: {
     color: '#f44336',
   },
+  dialogPaper: {
+    backgroundColor: '#101123',
+    color: '#fff',
+    border: '1px solid #2f3947',
+  },
+  dialogTitle: {
+    color: '#9EA9BF',
+    fontFamily: 'Poppins',
+    fontSize: '18px',
+    fontWeight: 500,
+  },
+  dialogContent: {
+    color: '#fff',
+  },
+  dialogLabel: {
+    color: '#9EA9BF',
+    fontWeight: 500,
+    display: 'inline-block',
+    width: '120px',
+  },
+  dialogValue: {
+    color: '#fff',
+  },
 }));
 
 const Transactions = () => {
   const classes = useStyles();
+  const { addToast } = useToasts();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [transactions, setTransactions] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [transactionDetails, setTransactionDetails] = useState(null);
 
-  // Mock data - replace with actual API call
+  // Fetch transactions data
   useEffect(() => {
-    const mockTransactions = Array.from({ length: 50 }, (_, index) => ({
-      id: index + 1,
-      user: `user${Math.floor(Math.random() * 100)}`,
-      type: ['deposit', 'withdraw', 'bet', 'win'][Math.floor(Math.random() * 4)],
-      amount: (Math.random() * 1000).toFixed(2),
-      status: ['success', 'pending', 'failed'][Math.floor(Math.random() * 3)],
-      date: new Date(Date.now() - Math.random() * 10000000000).toLocaleString(),
-      txHash: '0x' + Math.random().toString(16).substr(2, 40),
-    }));
-    setTransactions(mockTransactions);
-  }, []);
+    const fetchTransactions = async () => {
+      try {
+        setLoading(true);
+        const data = await getTransactionsList();
+        setTransactions(data);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+        addToast('Failed to fetch transactions', { appearance: 'error' });
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, [addToast]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -144,29 +188,104 @@ const Transactions = () => {
     setSelectedTransaction(null);
   };
 
+  const handleViewDetails = async () => {
+    try {
+      const details = await getTransactionDetails(selectedTransaction._id);
+      setTransactionDetails(details);
+      setDialogOpen(true);
+      handleMenuClose();
+    } catch (error) {
+      console.error('Error fetching transaction details:', error);
+      addToast('Failed to fetch transaction details', { appearance: 'error' });
+    }
+  };
+
+  const handleConfirmTransaction = async () => {
+    try {
+      await confirmTransaction(selectedTransaction._id);
+      addToast('Transaction confirmed successfully', { appearance: 'success' });
+      handleMenuClose();
+      // Refresh transactions list
+      const data = await getTransactionsList();
+      setTransactions(data);
+    } catch (error) {
+      console.error('Error confirming transaction:', error);
+      addToast('Failed to confirm transaction: ' + (error.response?.data?.error || error.message), { appearance: 'error' });
+    }
+  };
+
+  const handleCancelTransaction = async () => {
+    try {
+      await cancelTransaction(selectedTransaction._id);
+      addToast('Transaction cancelled successfully', { appearance: 'success' });
+      handleMenuClose();
+      // Refresh transactions list
+      const data = await getTransactionsList();
+      setTransactions(data);
+    } catch (error) {
+      console.error('Error cancelling transaction:', error);
+      addToast('Failed to cancel transaction: ' + (error.response?.data?.error || error.message), { appearance: 'error' });
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setTransactionDetails(null);
+  };
+
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'success':
-        return <SuccessIcon fontSize="small" />;
-      case 'pending':
+      case 1: // pending
         return <PendingIcon fontSize="small" />;
-      case 'failed':
+      case 2: // failed
         return <FailedIcon fontSize="small" />;
+      case 3: // success
+        return <SuccessIcon fontSize="small" />;
+      case 4: // manual
+        return <InfoIcon fontSize="small" />;
       default:
         return null;
     }
   };
 
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 1:
+        return 'Pending';
+      case 2:
+        return 'Failed';
+      case 3:
+        return 'Success';
+      case 4:
+        return 'Manual Hold';
+      default:
+        return 'Unknown';
+    }
+  };
+
   const getStatusChipClass = (status) => {
     switch (status) {
-      case 'success':
-        return classes.chipSuccess;
-      case 'pending':
+      case 1: // pending
         return classes.chipPending;
-      case 'failed':
+      case 2: // failed
         return classes.chipFailed;
+      case 3: // success
+        return classes.chipSuccess;
+      case 4: // manual
+        return classes.chipManual;
       default:
         return '';
+    }
+  };
+
+  const getTypeLabel = (type) => {
+    switch (type) {
+      case 'deposit':
+        return 'Deposit';
+      case 'withdraw':
+        return 'Withdrawal';
+      default:
+        return type.charAt(0).toUpperCase() + type.slice(1);
     }
   };
 
@@ -177,6 +296,14 @@ const Transactions = () => {
         value.toString().toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
+
+  if (loading) {
+    return (
+      <div className={classes.root}>
+        <p style={{ color: '#fff' }}>Loading transactions...</p>
+      </div>
+    );
+  }
 
   return (
     <div className={classes.root}>
@@ -213,39 +340,40 @@ const Transactions = () => {
               {filteredTransactions
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((transaction) => (
-                  <TableRow key={transaction.id}>
+                  <TableRow key={transaction._id}>
                     <TableCell className={classes.tableCell}>
-                      {transaction.id}
+                      {transaction._id.substring(0, 8)}...
                     </TableCell>
                     <TableCell className={classes.tableCell}>
-                      {transaction.user}
+                      {transaction._user?.username || 'Unknown User'}
                     </TableCell>
                     <TableCell className={classes.tableCell}>
-                      {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
+                      {getTypeLabel(transaction.type)}
                     </TableCell>
                     <TableCell className={classes.tableCell}>
                       <span
                         className={`${classes.amount} ${
-                          ['deposit', 'win'].includes(transaction.type)
+                          transaction.type === 'deposit'
                             ? classes.amountPositive
                             : classes.amountNegative
                         }`}
                       >
-                        ${transaction.amount}
+                        {transaction.type === 'deposit' ? '+' : '-'}$
+                        {Math.abs(transaction.siteValue).toFixed(2)}
                       </span>
                     </TableCell>
                     <TableCell className={classes.tableCell}>
                       <Chip
-                        icon={getStatusIcon(transaction.status)}
-                        label={transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                        icon={getStatusIcon(transaction.state)}
+                        label={getStatusLabel(transaction.state)}
                         className={`${classes.chip} ${getStatusChipClass(
-                          transaction.status
+                          transaction.state
                         )}`}
                         size="small"
                       />
                     </TableCell>
                     <TableCell className={classes.tableCell}>
-                      {transaction.date}
+                      {new Date(transaction.created).toLocaleString()}
                     </TableCell>
                     <TableCell className={classes.tableCell}>
                       <IconButton
@@ -286,21 +414,21 @@ const Transactions = () => {
         }}
       >
         <MenuItem
-          onClick={handleMenuClose}
+          onClick={handleViewDetails}
           style={{ fontFamily: 'Poppins', fontSize: '14px' }}
         >
           View Details
         </MenuItem>
-        {selectedTransaction?.status === 'pending' && (
+        {selectedTransaction?.state === 4 && (
           <>
             <MenuItem
-              onClick={handleMenuClose}
+              onClick={handleConfirmTransaction}
               style={{ fontFamily: 'Poppins', fontSize: '14px', color: '#4CAF50' }}
             >
               Approve
             </MenuItem>
             <MenuItem
-              onClick={handleMenuClose}
+              onClick={handleCancelTransaction}
               style={{ fontFamily: 'Poppins', fontSize: '14px', color: '#f44336' }}
             >
               Reject
@@ -308,6 +436,89 @@ const Transactions = () => {
           </>
         )}
       </Menu>
+
+      {/* Transaction Details Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        classes={{ paper: classes.dialogPaper }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle className={classes.dialogTitle}>
+          Transaction Details
+        </DialogTitle>
+        <DialogContent className={classes.dialogContent}>
+          {transactionDetails && (
+            <div>
+              <div style={{ marginBottom: '10px' }}>
+                <span className={classes.dialogLabel}>ID:</span>
+                <span className={classes.dialogValue}>{transactionDetails._id}</span>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <span className={classes.dialogLabel}>User:</span>
+                <span className={classes.dialogValue}>
+                  {transactionDetails._user?.username || 'Unknown User'}
+                </span>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <span className={classes.dialogLabel}>Type:</span>
+                <span className={classes.dialogValue}>
+                  {getTypeLabel(transactionDetails.type)}
+                </span>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <span className={classes.dialogLabel}>Currency:</span>
+                <span className={classes.dialogValue}>
+                  {transactionDetails.currency} ({transactionDetails.network})
+                </span>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <span className={classes.dialogLabel}>Amount:</span>
+                <span className={classes.dialogValue}>
+                  ${Math.abs(transactionDetails.siteValue).toFixed(2)}
+                </span>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <span className={classes.dialogLabel}>Crypto Amount:</span>
+                <span className={classes.dialogValue}>
+                  {Math.abs(transactionDetails.cryptoValue).toFixed(8)} {transactionDetails.currency}
+                </span>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <span className={classes.dialogLabel}>Address:</span>
+                <span className={classes.dialogValue}>{transactionDetails.address}</span>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <span className={classes.dialogLabel}>Status:</span>
+                <Chip
+                  icon={getStatusIcon(transactionDetails.state)}
+                  label={getStatusLabel(transactionDetails.state)}
+                  className={`${classes.chip} ${getStatusChipClass(
+                    transactionDetails.state
+                  )}`}
+                  size="small"
+                />
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <span className={classes.dialogLabel}>Transaction ID:</span>
+                <span className={classes.dialogValue}>{transactionDetails.txid || 'N/A'}</span>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <span className={classes.dialogLabel}>Created:</span>
+                <span className={classes.dialogValue}>
+                  {new Date(transactionDetails.created).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} style={{ color: '#9EA9BF' }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };
