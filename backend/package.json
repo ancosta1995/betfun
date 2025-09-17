@@ -4,10 +4,11 @@
   "description": "",
   "keywords": [],
   "scripts": {
-    "start": "npm start",
+    "start": "NODE_ENV=production node ./src/index.js",
     "dev": "set NODE_ENV=development && node ./src/index.js  --trace-warnings",
     "build:frontend": "cd ../frontend && npm run build",
-    "build": "npm run build:frontend"
+    "build": "npm run build:frontend",
+    "production": "NODE_ENV=production node ./src/index.js"
   },
   "author": "",
   "license": "",
