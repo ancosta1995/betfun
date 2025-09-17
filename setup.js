@@ -29,7 +29,12 @@ runCommand('npm run install:linux', path.join(__dirname, 'frontend'));
 
 // 3. Fazer build do frontend
 console.log('3️⃣ Fazendo BUILD do FRONTEND...');
-runCommand('npm run build:linux', path.join(__dirname, 'frontend'));
+try {
+  runCommand('npm run build:linux', path.join(__dirname, 'frontend'));
+} catch (error) {
+  console.log('⚠️  Build com versioning falhou, tentando build simples...');
+  runCommand('npm run build:simple', path.join(__dirname, 'frontend'));
+}
 
 // 4. Verificar se .env existe
 const envPath = path.join(__dirname, 'backend', '.env');

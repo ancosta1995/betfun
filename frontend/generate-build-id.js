@@ -11,8 +11,11 @@ const fs = require("fs");
 
 console.log("Incrementing build number...");
 
+// Check if src/metadata.json exists, if not use the root one
+const metadataPath = fs.existsSync("src/metadata.json") ? "src/metadata.json" : "metadata.json";
+
 // Read the metadata file
-fs.readFile("src/metadata.json", (error, content) => {
+fs.readFile(metadataPath, (error, content) => {
   // If error, throw it
   if (error) throw error;
 
@@ -31,10 +34,16 @@ fs.readFile("src/metadata.json", (error, content) => {
   // Apply changes
   metadata.build = newBuildId;
 
-  // Re-write the file
-  fs.writeFile("src/metadata.json", JSON.stringify(metadata), error => {
+  // Re-write the file to both locations
+  fs.writeFile(metadataPath, JSON.stringify(metadata), error => {
     // If error, throw it
     if (error) throw error;
     console.log("Current build id: " + newBuildId);
+    
+    // Also create/update src/metadata.json if it doesn't exist
+    if (metadataPath === "metadata.json") {
+      fs.mkdirSync("src", { recursive: true });
+      fs.writeFile("src/metadata.json", JSON.stringify(metadata), () => {});
+    }
   });
 });
