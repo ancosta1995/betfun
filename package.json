@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "description": "Casino application with backend and frontend",
   "scripts": {
+    "setup": "node setup.js",
+    "server": "cd backend && npm start",
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm run start:fast --prefix frontend\"",
     "dev:slow": "concurrently \"npm run dev --prefix backend\" \"npm start --prefix frontend\"",
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run start:fast --prefix frontend",
     "build": "cd frontend && npm install && npm run build",
-    "start": "cd backend && npm install --production && npm start",
-    "deploy": "npm run build && npm start",
+    "start": "npm run setup && npm run server",
+    "deploy": "npm run build && npm run server",
     "install": "cd backend && npm install --production"
   },
   "devDependencies": {

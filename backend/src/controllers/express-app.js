@@ -91,6 +91,9 @@ app.use("/api/callback", require("../routes/callback"));
 app.use("/api/skinsback", require("../routes/skinsback"));
 app.use("/api/markets", [...middleware, require("../routes/markets")]);
 
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, '../', '../', 'frontend', 'build')));
+
 // Serve the React app for any non-API routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../', '../', 'frontend', 'build', 'index.html'));
