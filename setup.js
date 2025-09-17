@@ -13,27 +13,47 @@ function runCommand(command, cwd = process.cwd()) {
   try {
     execSync(command, { cwd, stdio: 'inherit' });
     console.log('✅ Sucesso!\n');
+    return true;
   } catch (error) {
     console.log(`❌ Erro: ${error.message}\n`);
-    process.exit(1);
+    return false;
+  }
+}
+
+// Função para executar comandos que podem falhar
+function runCommandSafe(command, cwd = process.cwd()) {
+  console.log(`📦 Executando: ${command}`);
+  try {
+    execSync(command, { cwd, stdio: 'inherit' });
+    console.log('✅ Sucesso!\n');
+    return true;
+  } catch (error) {
+    console.log(`⚠️ Falhou: ${error.message}\n`);
+    return false;
   }
 }
 
 // 1. Instalar dependências do backend
 console.log('1️⃣ Instalando dependências do BACKEND...');
-runCommand('npm install', path.join(__dirname, 'backend'));
+if (!runCommand('npm install', path.join(__dirname, 'backend'))) {
+  process.exit(1);
+}
 
 // 2. Instalar dependências do frontend
 console.log('2️⃣ Instalando dependências do FRONTEND...');
-runCommand('npm run install:linux', path.join(__dirname, 'frontend'));
+if (!runCommand('npm run install:linux', path.join(__dirname, 'frontend'))) {
+  process.exit(1);
+}
 
 // 3. Fazer build do frontend
 console.log('3️⃣ Fazendo BUILD do FRONTEND...');
-try {
-  runCommand('npm run build:linux', path.join(__dirname, 'frontend'));
-} catch (error) {
+const buildSuccess = runCommandSafe('npm run build:linux', path.join(__dirname, 'frontend'));
+
+if (!buildSuccess) {
   console.log('⚠️  Build com versioning falhou, tentando build simples...');
-  runCommand('npm run build:simple', path.join(__dirname, 'frontend'));
+  if (!runCommand('npm run build:simple', path.join(__dirname, 'frontend'))) {
+    process.exit(1);
+  }
 }
 
 // 4. Verificar se .env existe
