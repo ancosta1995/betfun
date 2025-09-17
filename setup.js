@@ -47,12 +47,18 @@ if (!runCommand('npm run install:linux', path.join(__dirname, 'frontend'))) {
 
 // 3. Fazer build do frontend
 console.log('3️⃣ Fazendo BUILD do FRONTEND...');
-const buildSuccess = runCommandSafe('npm run build:linux', path.join(__dirname, 'frontend'));
+let buildSuccess = runCommandSafe('npm run build:linux', path.join(__dirname, 'frontend'));
 
 if (!buildSuccess) {
   console.log('⚠️  Build com versioning falhou, tentando build simples...');
-  if (!runCommand('npm run build:simple', path.join(__dirname, 'frontend'))) {
-    process.exit(1);
+  buildSuccess = runCommandSafe('npm run build:simple', path.join(__dirname, 'frontend'));
+  
+  if (!buildSuccess) {
+    console.log('⚠️  Build simples falhou, tentando build extremo (sem sourcemaps)...');
+    if (!runCommand('npm run build:extreme', path.join(__dirname, 'frontend'))) {
+      console.log('❌ Todos os builds falharam! Servidor precisa de mais RAM.');
+      process.exit(1);
+    }
   }
 }
 
