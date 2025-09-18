@@ -13,6 +13,7 @@
     "fix-games": "node fix-games-imports.js",
     "fix-prices": "node fix-prices-file.js",
     "remove-ssl": "node remove-ssl-node.js",
+    "fix-env": "node fix-env-production.js",
     "server": "cd backend && npm start",
     "build-local": "node build-and-deploy.js",
     "server-only": "cd backend && npm run start-fixed",
