@@ -9,6 +9,7 @@
     "check-config": "node check-and-fix-config.js",
     "fix-structure": "node fix-imports-for-structure.js",
     "debug-config": "node debug-config.js",
+    "fix-controllers": "node fix-controller-imports.js",
     "server": "cd backend && npm start",
     "build-local": "node build-and-deploy.js",
     "server-only": "cd backend && npm run start-fixed",
