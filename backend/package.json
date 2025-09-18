@@ -5,6 +5,7 @@
   "keywords": [],
   "scripts": {
     "start": "NODE_ENV=production node ./src/index.js",
+    "start-fixed": "cd src && NODE_ENV=production node ./index.js",
     "dev": "set NODE_ENV=development && node ./src/index.js  --trace-warnings",
     "build:frontend": "cd ../frontend && npm run build",
     "build": "npm run build:frontend",
