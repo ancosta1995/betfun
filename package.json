@@ -4,7 +4,10 @@
   "description": "Casino application with backend and frontend",
   "scripts": {
     "setup": "node setup.js",
+    "setup-server": "node server-setup.js",
     "server": "cd backend && npm start",
+    "build-local": "node build-and-deploy.js",
+    "server-only": "cd backend && npm start",
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm run start:fast --prefix frontend\"",
     "dev:slow": "concurrently \"npm run dev --prefix backend\" \"npm start --prefix frontend\"",
     "dev:backend": "npm run dev --prefix backend",
