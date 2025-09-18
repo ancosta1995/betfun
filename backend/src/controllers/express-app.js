@@ -94,13 +94,15 @@ app.use("/api/markets", [...middleware, require("../routes/markets")]);
 // Serve static files from React build
 app.use(express.static(path.join(__dirname, '../', '../', 'frontend', 'build')));
 
-// Serve the React app for any non-API routes
+// Final Handlers (ANTES do fallback do frontend)
+app.use('/api', notFoundHandler);
+
+// Serve the React app for any non-API routes (DEPOIS dos middlewares de erro da API)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../', '../', 'frontend', 'build', 'index.html'));
 });
 
-// Final Handlers
-app.use(notFoundHandler);
+// Error handler global
 app.use(errorHandler);
 
 module.exports = app;

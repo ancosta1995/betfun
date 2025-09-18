@@ -14,6 +14,7 @@
     "fix-prices": "node fix-prices-file.js",
     "remove-ssl": "node remove-ssl-node.js",
     "fix-env": "node fix-env-production.js",
+    "debug-frontend": "node debug-frontend-serving.js",
     "server": "cd backend && npm start",
     "build-local": "node build-and-deploy.js",
     "server-only": "cd backend && npm run start-fixed",
