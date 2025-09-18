@@ -46,11 +46,11 @@ if (!process.env.NODE_ENV === "production") {
 }
 
 /**
- * @route   GET /
- * @desc    Show message and return status 200
+ * @route   GET /api/
+ * @desc    Show API status  
  * @access  Public
  */
-app.get("/", async (req, res) => {
+app.get("/api", async (req, res) => {
   return res.json({
     response: "betbasegg JSON REST API v.2.0.0",
     uptimeMinutes: Math.floor(process.uptime() / 60),
