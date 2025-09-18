@@ -4,10 +4,11 @@ const favicon = require("serve-favicon");
 const path = require("path");
 const cors = require("cors");
 const morgan = require("morgan");
-const {
-  errorHandler,
-  notFoundHandler,
-} = require("@bountyscripts/express-middleware");
+// Removed external middleware that was causing issues
+// const {
+//   errorHandler,
+//   notFoundHandler,
+// } = require("@bountyscripts/express-middleware");
 const { checkMaintenance } = require("../middleware/maintenance");
 const rateLimit = require("express-rate-limit");
 const { spawn } = require('child_process');
@@ -37,8 +38,8 @@ app.use(express.json({ extended: false }));
 app.use(express.urlencoded({ extended: true }));
 app.use(favicon(path.join(__dirname, "../", "../", "faviconoo.svg")));
 
-// Serve static files from the React app build directory
-app.use(express.static(path.join(__dirname, "../", "../", "frontend", "build")));
+// Serve static files from the React app build directory  
+app.use(express.static(path.join(__dirname, "../../../frontend/build")));
 
 // Use logger if not in production
 if (!process.env.NODE_ENV === "production") {
@@ -91,12 +92,9 @@ app.use("/api/callback", require("../routes/callback"));
 app.use("/api/skinsback", require("../routes/skinsback"));
 app.use("/api/markets", [...middleware, require("../routes/markets")]);
 
-// Serve static files from React build
-app.use(express.static(path.join(__dirname, '../', '../', 'frontend', 'build')));
-
-// Serve the React app for any non-API routes
+// Serve the React app for any non-API routes (SPA Fallback)
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../', '../', 'frontend', 'build', 'index.html'));
+  res.sendFile(path.join(__dirname, '../../../frontend/build/index.html'));
 });
 
 module.exports = app;
